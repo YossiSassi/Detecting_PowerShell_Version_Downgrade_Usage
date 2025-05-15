@@ -4,7 +4,7 @@ Can help with assessing if PS v2.0 is in use by querying all servers remotely, a
 Uses RPC. Event Log access needed, e.g. 'Event Log Readers' or Local admin on Servers.
 
 Comments to yossis@protonmail.com
-Version 1.0
+Version 1.0.1 - Added better error handling, especially when no events found
 #>
 [cmdletbinding()]
 param(
@@ -45,6 +45,10 @@ if ($SaveResultsToCSV)
         $SW.WriteLine('ComputerName,PingStatus,PSDowngradeDetected,NumberOfEventsDetected')
 }
 
+# set errors to silent
+$CurrentEAP = $ErrorActionPreference;
+$ErrorActionPreference = "silentlycontinue";
+
 foreach ($ComputerName in $Computers) {
     $HostCounter++;
 
@@ -54,6 +58,10 @@ foreach ($ComputerName in $Computers) {
 
         # Get relevant events
         $Events = Get-WinEvent -FilterHashtable @{logname='Windows PowerShell';id=400} -ComputerName $ComputerName;
+        if (!$?)
+            {
+                Write-Host "$($Error[0].exception.Message)" -ForegroundColor DarkYellow
+        }
 
         if ($Events) {
         $Events | ForEach-Object {
@@ -103,3 +111,7 @@ if ($SaveResultsToCSV) {
     $SW.Dispose();
     Write-Host "`nReport saved to $ReportName." -ForegroundColor Green
 }
+
+# wrap up
+[gc]::Collect();
+$ErrorActionPreference = $CurrentEAP
